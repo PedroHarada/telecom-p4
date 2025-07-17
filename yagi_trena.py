@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 # Based on https://gist.github.com/oberstet/f492fe987d5d746cba5b0880e9f33d5b
+# Modificado para simulação em 145.825 MHz
 
 import os
 import math
@@ -15,99 +16,54 @@ from openEMS import openEMS
 from openEMS.physical_constants import C0
 
 # enable NF2FF recording, computation and plotting
-enable_nf2ff = False
+enable_nf2ff = True
 
-# not only render, but also fire up matplotlib to show the plots
-enable_show_plots = False
+# show plots
+enable_show_plots = True
 
-# fire up AppCSXCAD for viewing the model before running it
+# open model viewer
 enable_appcsxcad = False
 
-# all units are in mm
 unit = 1e-3
 
 # =============================
-# **! Yagi antenna settings !**
+# Antena Yagi otimizada para 145.825 MHz
 # =============================
-director_length = 892
-director_dist = 114
-director_side_boom_additional_len = 50
+f0 = 145.825e6
+fc = 0.3 * f0
+opt_factor = 0.97  # aproximação inicial para ressonância
+lambda0 = opt_factor * C0 / f0 / unit
 
-driven_length = 902
-
-reflector_length = 1051
-reflector_dist = 203
+# Geometria ajustada para 145.825 MHz
+reflector_length = 0.5 * lambda0 * 1.05
+reflector_dist = 0.25 * lambda0
 reflector_side_boom_additional_len = 200
 
-# https://www.meiacolher.com/2018/10/medidas-dos-canos-de-pvc-saiba-bitola.html
+driven_length = 0.5 * lambda0
+
+director_length = 0.5 * lambda0 * 0.95
+director_dist = 0.2 * lambda0
+director_side_boom_additional_len = 50
+
 boom_ext_radius = 25
 boom_shell_width = 1.7
 
-# https://smarc.org.au/wp-content/uploads/2021/11/Hairpin-Matching-VK2DEQ.pdf
-hairpin_enable = False
-# https://i0.wp.com/cref.if.ufrgs.br/wp-content/uploads/2018/06/fig4_bitolafio.png
+hairpin_enable = True
 hairpin_wire_diameter = 2.26
 hairpin_length = 62
 hairpin_D = 10
-# =============================
 
-# excitation frequency and bandwidth
-f0 = 145.825e6
-
-# excitation bandwidth
-fc = 0.3 * f0
-
-# length factor to apply to reach fixed point of resonance frequency
-# being identical to excitation frequency
-# "Found resonance frequency at 500 MHz with -44 dB at 71 Ohm"
-
-# Correction factor to shorten the wavelength used from theoretical value to account
-# for XXX
-#
-# Found resonance frequency at 446.1 MHz with -80.4 dB at 71.0 Ohm
-# Dipole (lambda/2) length is 290.7 mm
-#
-# opt_factor = 0.8625
-
-# use with driven_wire_radius = 0.001
-# opt_factor = 0.8651
-
-# use with driven_wire_radius = 2.0
-# Found resonance frequency at 446.1 MHz with -80.5 dB at 70.8 Ohm
-# Dipole (lambda/2) length is 285.8 mm
-opt_factor = 0.8506
-
-# wave length to compute antenna length from
-# lambda0 = round(opt_factor * C0 / 500e6 / unit)
-lambda0 = opt_factor * C0 / f0 / unit
-
-# gap in between the two driven arms (the lumped port will fill that)
 driven_gap = 1.0
-
-# driven_wire_radius = 0.001
-# driven_wire_radius = 1.0
 driven_wire_radius = 2.0
-
-# Radiation resistance (ohms)
-# https://en.wikipedia.org/wiki/Radiation_resistance#Radiation_resistance_of_common_antennas
-# feed_resistance = 73.1
-# feed_resistance = 71.0
 feed_resistance = 50
-
-# Overlap of lumped port (driven feed) with the actual driven arms excited
-# Note: MUST be non-zero, and actually >>0, not sure ..
 feed_overlap = 0.1
-# feed_overlap = 0.5
-# feed_overlap = 1.0
 
 max_res = math.floor(C0 / (f0 + fc) / unit / 20)
 sim_box = np.array([1, 1, 1]) * 2.0 * lambda0
-# nf_ff_transition_distance = math.ceil(lambda0 / (2 * math.pi))
 nf_ff_transition_distance = 2 * lambda0
 
 output_dir = os.path.abspath(os.path.join("results", "yagi_trena"))
-if not os.path.isdir(output_dir):
-    os.mkdir(output_dir)
+os.makedirs(output_dir, exist_ok=True)
 
 class Trena:
     thickness = 0.2
